@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../widgets/editor_selector.dart';
+import '../widgets/settings_dialog.dart';
+import '../services/gemini_service.dart';
 import 'dart:io';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:ui' as ui;
 import 'dart:math';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:image_picker/image_picker.dart';
 
 class EditorScreen extends StatefulWidget {
   final XFile? selectedImage;
@@ -27,6 +30,7 @@ class _EditorScreenState extends State<EditorScreen> {
   String _selectedEmoji = '';
   double _density = 2.0;
   double _size = 1.0;
+  bool _isAnalyzingImage = false;
 
   // 添加一个 GlobalKey 用于 RepaintBoundary
   final GlobalKey _boundaryKey = GlobalKey();
@@ -37,9 +41,161 @@ class _EditorScreenState extends State<EditorScreen> {
   final List<String> _defaultEmojis = ['🌸', '🌺', '🌹', '🌷', '🌼', '🌻', '🍀', '🌿', '🌱', '🌳', '🌴', '🌵', '🍄', '🦋', '🐝', '⭐️', '✨', '💫', '🌙', '☁️'];
   
   @override
+  void initState() {
+    super.initState();
+    _analyzeImageWithGemini();
+  }
+  
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showSettingsDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) => const SettingsDialog(),
+    );
+  }
+
+  // Analyze the selected image using Gemini API
+  Future<void> _analyzeImageWithGemini() async {
+    // Only proceed if there's a selected image and Gemini API key is configured
+    if (widget.selectedImage == null) {
+      print('EditorScreen: 没有选择图片，不调用Gemini API');
+      return;
+    }
+    
+    final hasApiKey = await GeminiService.hasApiKey();
+    if (!hasApiKey) {
+      print('EditorScreen: 未配置Gemini API Key，跳过图片分析');
+      return;
+    }
+    
+    try {
+      // 设置正在分析状态
+      if (mounted) {
+        setState(() {
+          _isAnalyzingImage = true;
+        });
+      }
+      
+      print('EditorScreen: 开始读取图片文件: ${widget.selectedImage!.path}');
+      // Read the image file
+      final file = File(widget.selectedImage!.path);
+      final imageBytes = await file.readAsBytes();
+      print('EditorScreen: 图片文件读取成功，大小: ${imageBytes.length} 字节');
+      
+      // Call Gemini API to analyze the image
+      print('EditorScreen: 调用Gemini API分析图片');
+      final result = await GeminiService.analyzeImage(imageBytes);
+      
+      if (result != null && mounted) {
+        print('EditorScreen: Gemini API返回结果: $result');
+        
+        // 检查是否有错误
+        if (result.containsKey('error')) {
+          setState(() {
+            _isAnalyzingImage = false;
+          });
+          
+          // 显示错误消息
+          if (mounted) {
+            // 特别处理网络相关错误
+            if (result['error'] == 'network_error' || 
+                result['error'] == 'connection_error') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result['message'] ?? '网络连接问题'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                  backgroundColor: Colors.orange,
+                  action: SnackBarAction(
+                    label: '重试',
+                    textColor: Colors.white,
+                    onPressed: _reimagineWithGemini,
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result['message'] ?? '未知错误'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                  action: SnackBarAction(
+                    label: '设置',
+                    onPressed: _showSettingsDialog,
+                  ),
+                ),
+              );
+            }
+          }
+          return;
+        }
+        
+        setState(() {
+          // Update emoji if provided
+          if (result['emojis'] != null && result['emojis'].isNotEmpty) {
+            _selectedEmoji = result['emojis'];
+            print('EditorScreen: 设置Emoji为: $_selectedEmoji');
+          } else {
+            print('EditorScreen: Gemini未返回有效Emoji');
+          }
+          
+          // Update color if provided
+          if (result['color'] != null) {
+            _selectedColor = result['color'];
+            print('EditorScreen: 设置颜色为: $_selectedColor');
+          } else {
+            print('EditorScreen: Gemini未返回有效颜色');
+          }
+          
+          _isAnalyzingImage = false;
+        });
+      } else {
+        print('EditorScreen: Gemini API分析未返回结果');
+        if (mounted) {
+          setState(() {
+            _isAnalyzingImage = false;
+          });
+          
+          // 显示错误消息
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('无法获取AI分析结果，可能是网络连接问题'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: '重试',
+                onPressed: _reimagineWithGemini,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('EditorScreen: 图片分析过程发生错误: $e');
+      if (mounted) {
+        setState(() {
+          _isAnalyzingImage = false;
+        });
+        
+        // 显示错误消息
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('分析图片时出错: $e'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: '重试',
+              onPressed: _reimagineWithGemini,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   // 添加随机生成参数的方法
@@ -69,6 +225,80 @@ class _EditorScreenState extends State<EditorScreen> {
       // 随机大小 (0.0-5.0)
       _size = random.nextDouble() * 5.0;
     });
+  }
+
+  // 重新通过Gemini API分析图片
+  Future<void> _reimagineWithGemini() async {
+    if (widget.selectedImage == null) {
+      print('EditorScreen: 没有选择图片，无法重新分析');
+      return;
+    }
+    
+    final hasApiKey = await GeminiService.hasApiKey();
+    if (!hasApiKey) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('请先在设置中配置Gemini API密钥'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      print('EditorScreen: 未配置Gemini API Key，无法重新分析');
+      return;
+    }
+    
+    // 检查网络连接
+    if (!await _checkNetworkPermission()) {
+      return;
+    }
+    
+    // 开始分析
+    _analyzeImageWithGemini();
+  }
+  
+  // 检查网络权限和连接
+  Future<bool> _checkNetworkPermission() async {
+    try {
+      // 简单的网络连接测试
+      print('EditorScreen: 检查网络权限...');
+      final result = await Future.wait([
+        GeminiService.ping(),
+        Future.delayed(const Duration(seconds: 1)), // 确保UI有足够时间响应
+      ]);
+      
+      final pingSuccess = result[0] as bool;
+      if (!pingSuccess && mounted) {
+        print('EditorScreen: 网络检查失败');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('无法连接到网络，请检查网络设置和应用权限'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+            action: SnackBarAction(
+              label: '重试',
+              textColor: Colors.white,
+              onPressed: _reimagineWithGemini,
+            ),
+          ),
+        );
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      print('EditorScreen: 网络权限检查失败: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('网络连接检查失败: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return false;
+    }
   }
 
   void _handleColorChanged(Color color) {
@@ -208,67 +438,117 @@ class _EditorScreenState extends State<EditorScreen> {
   
   // Editor canvas widget that's used in both layouts
   Widget _buildEditorCanvas(double containerSize) {
-    return Container(
-      width: containerSize,
-      height: containerSize,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        // Remove the box shadow
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: RepaintBoundary(
-          key: _boundaryKey,
-          child: Container(
-            width: containerSize,
-            height: containerSize,
-            color: ColorScheme.fromSeed(seedColor: _selectedColor).secondaryContainer,
-            child: Stack(
-              children: [
-                // Emoji 层放在底部
-                ...(_generateEmojiGrid(containerSize)),
-                // 图片放在最上层，添加内边距和圆角
-                if (widget.selectedImage != null)
-                  Positioned.fill(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: containerSize - 128, // 考虑左右边距
-                          maxHeight: containerSize - 128, // 考虑上下边距
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.file(
-                            File(widget.selectedImage!.path),
-                            fit: BoxFit.cover,
+    return Stack(
+      children: [
+        Container(
+          width: containerSize,
+          height: containerSize,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            // Remove the box shadow
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: RepaintBoundary(
+              key: _boundaryKey,
+              child: Container(
+                width: containerSize,
+                height: containerSize,
+                color: ColorScheme.fromSeed(seedColor: _selectedColor).secondaryContainer,
+                child: Stack(
+                  children: [
+                    // Emoji 层放在底部
+                    ...(_generateEmojiGrid(containerSize)),
+                    // 图片放在最上层，添加内边距和圆角
+                    if (widget.selectedImage != null)
+                      Positioned.fill(
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: containerSize - 128, // 考虑左右边距
+                              maxHeight: containerSize - 128, // 考虑上下边距
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.file(
+                                File(widget.selectedImage!.path),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
+        // Loading indicator overlay
+        if (_isAnalyzingImage)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'AI Analyzing...',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
   
   // Action buttons widget that's used in both layouts
   Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
+    return Wrap(
+      spacing: 12.0,
+      runSpacing: 12.0,
+      alignment: WrapAlignment.start,
       children: [
         FilledButton.icon(
-          icon: const Icon(Icons.add_circle),
-          label: const Text('Generate'),
+          icon: const Icon(Icons.shuffle),
+          label: const Text('Shuffle'),
           style: FilledButton.styleFrom(
             minimumSize: const Size(100, 48),
             maximumSize: const Size(200, 48),
           ),
           onPressed: _generateRandomParameters,
         ),
-        const SizedBox(width: 16),
+        if (widget.selectedImage != null)
+          FilledButton.icon(
+            icon: _isAnalyzingImage 
+                ? const SizedBox(
+                    width: 20, 
+                    height: 20, 
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.0,
+                      color: Colors.white,
+                    )
+                  ) 
+                : const Icon(Icons.auto_awesome),
+            label: Text(_isAnalyzingImage ? 'Analyzing...' : 'Reimagine'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(100, 48),
+              maximumSize: const Size(200, 48),
+              backgroundColor: _isAnalyzingImage 
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
+                  : null,
+            ),
+            onPressed: _isAnalyzingImage ? null : _reimagineWithGemini,
+          ),
         FilledButton.icon(
           icon: const Icon(Icons.download_rounded),
           label: const Text('Save'),
@@ -322,6 +602,12 @@ class _EditorScreenState extends State<EditorScreen> {
                   onPressed: () => Navigator.pop(context),
                 ),
                 const Spacer(),
+                // Add settings button
+                IconButton.filledTonal(
+                  icon: const Icon(Icons.settings),
+                  onPressed: _showSettingsDialog,
+                ),
+                const SizedBox(width: 8),
                 IconButton.filledTonal(
                   icon: const Icon(Icons.share),
                   onPressed: () async {
@@ -418,6 +704,12 @@ class _EditorScreenState extends State<EditorScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
               const Spacer(),
+              // Add settings button
+              IconButton.filledTonal(
+                icon: const Icon(Icons.settings),
+                onPressed: _showSettingsDialog,
+              ),
+              const SizedBox(width: 8),
               IconButton.filledTonal(
                 icon: const Icon(Icons.share),
                 onPressed: () async {

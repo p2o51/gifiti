@@ -28,17 +28,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initSharingIntent() async {
-    // For sharing images coming from outside the app while the app is in the memory
+    // 仅监听应用运行中的分享
     _intentDataStreamSubscription = _flutterSharingIntent.getMediaStream()
         .listen((List<SharedFile> value) {
       _handleSharedFiles(value);
+      print('HomeScreen: 收到运行中分享');
     }, onError: (err) {
-      debugPrint("getIntentDataStream error: $err");
+      debugPrint("HomeScreen: getIntentDataStream error: $err");
     });
 
-    // For sharing images coming from outside the app while the app is closed
-    final List<SharedFile> value = await _flutterSharingIntent.getInitialSharing();
-    _handleSharedFiles(value);
+    // 不再处理初始分享，因为已经在MyApp中处理
   }
 
   @override
@@ -49,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _handleSharedFiles(List<SharedFile> files) {
     if (files.isNotEmpty && mounted) {
+      print('HomeScreen: 处理分享文件: ${files.first.value}');
       setState(() {
         _selectedImage = XFile(files.first.value!);
       });

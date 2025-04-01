@@ -7,7 +7,11 @@ plugins {
 android {
     namespace "com.gojyuplusone.gifiti"
     compileSdkVersion 34
-    ndkVersion flutter.ndkVersion
+    ndkVersion "27.0.12077973"
+
+    buildFeatures {
+        buildConfig true
+    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -18,12 +22,19 @@ android {
         jvmTarget = '17'
     }
 
+    aaptOptions {
+        // 确保处理网络安全配置文件
+        noCompress "xml"
+    }
+
     defaultConfig {
         applicationId = "com.gojyuplusone.gifiti"
         minSdkVersion 21
         targetSdkVersion 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // 添加多dex支持
+        multiDexEnabled true
     }
     signingConfigs {
         release {
@@ -42,15 +53,38 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
+            // 保持minifyEnabled为true，但确保正确使用proguard规则
             minifyEnabled true
+            // 确保使用我们自己的规则
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 添加更多调试信息
+            debuggable false
+            // 网络安全性，明确允许HTTP和HTTPS
+            buildConfigField "boolean", "ALLOW_CLEARTEXT_TRAFFIC", "true"
         }
         debug {
             minifyEnabled false
+            debuggable true
         }
+    }
+    // 添加多dex支持
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/ASL2.0'
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.multidex:multidex:2.0.1'
 }
