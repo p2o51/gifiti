@@ -276,41 +276,52 @@ class _EditorScreenState extends State<EditorScreen> {
                       final screenWidth = MediaQuery.of(context).size.width;
                       final containerSize = screenWidth * 0.95;
                       return Center(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: RepaintBoundary(
-                            key: _boundaryKey,
-                            child: Container(
-                              width: containerSize,
-                              height: containerSize,
-                              decoration: BoxDecoration(
-                                color: ColorScheme.fromSeed(seedColor: _selectedColor).secondaryContainer,
-                                borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: containerSize,
+                          height: containerSize,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                spreadRadius: 1,
                               ),
-                              child: Stack(
-                                children: [
-                                  // Emoji 层放在底部
-                                  ...(_generateEmojiGrid(containerSize)),
-                                  // 图片放在最上层，添加内边距和圆角
-                                  if (widget.selectedImage != null)
-                                    Positioned.fill(
-                                      child: Center(
-                                        child: ConstrainedBox(
-                                          constraints: BoxConstraints(
-                                            maxWidth: containerSize - 128, // 考虑左右边距
-                                            maxHeight: containerSize - 128, // 考虑上下边距
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(16),
-                                            child: Image.file(
-                                              File(widget.selectedImage!.path),
-                                              fit: BoxFit.cover,
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: RepaintBoundary(
+                              key: _boundaryKey,
+                              child: Container(
+                                width: containerSize,
+                                height: containerSize,
+                                color: ColorScheme.fromSeed(seedColor: _selectedColor).secondaryContainer,
+                                child: Stack(
+                                  children: [
+                                    // Emoji 层放在底部
+                                    ...(_generateEmojiGrid(containerSize)),
+                                    // 图片放在最上层，添加内边距和圆角
+                                    if (widget.selectedImage != null)
+                                      Positioned.fill(
+                                        child: Center(
+                                          child: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              maxWidth: containerSize - 128, // 考虑左右边距
+                                              maxHeight: containerSize - 128, // 考虑上下边距
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(16),
+                                              child: Image.file(
+                                                File(widget.selectedImage!.path),
+                                                fit: BoxFit.cover,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
