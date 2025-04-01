@@ -211,27 +211,30 @@ class _ColorSelectorState extends State<ColorSelector> {
     return Container(
       margin: const EdgeInsets.all(16.0),
       padding: const EdgeInsets.all(8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _shadeColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 16),
-          OutlinedButton.icon(
-            onPressed: _openColorPicker,
-            icon: const Icon(Icons.palette),
-            label: const Text('Show color picker'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(200, 40),
-              maximumSize: const Size(200, 40),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _shadeColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: _openColorPicker,
+                icon: const Icon(Icons.palette),
+                label: const Text('Show color picker'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(200, 40),
+                  maximumSize: const Size(200, 40),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -331,7 +334,7 @@ class _LayoutSelectorState extends State<LayoutSelector> {
     _sizeValue = widget.initialSize;
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.all(16.0),
@@ -352,11 +355,18 @@ class _LayoutSelectorState extends State<LayoutSelector> {
                 ),
               ),
               Expanded(
-                child: Slider(
-                  value: _densityValue,
-                  min: 0,
-                  max: 4,
-                  divisions: 4,
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 4.0,
+                    trackShape: const RoundedRectSliderTrackShape(),
+                    activeTrackColor: Theme.of(context).colorScheme.primary,
+                    inactiveTrackColor: Colors.white,
+                  ),
+                  child: Slider(
+                    value: _densityValue,
+                    min: 0,
+                    max: 4,
+                    divisions: 4,
                     onChanged: (value) {
                       setState(() {
                         _densityValue = value;
@@ -364,6 +374,7 @@ class _LayoutSelectorState extends State<LayoutSelector> {
                       widget.onDensityChanged?.call(value);
                     },
                   ),
+                ),
               ),
             ],
           ),
@@ -382,18 +393,26 @@ class _LayoutSelectorState extends State<LayoutSelector> {
                 ),
               ),
               Expanded(
-                child: Slider(
-                  value: _sizeValue,
-                  min: 0,
-                  max: 4,
-                  divisions: 4,
-                  onChanged: (value) {
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 4.0,
+                    trackShape: const RoundedRectSliderTrackShape(),
+                    activeTrackColor: Theme.of(context).colorScheme.primary,
+                    inactiveTrackColor: Colors.white,
+                  ),
+                  child: Slider(
+                    value: _sizeValue,
+                    min: 0,
+                    max: 4,
+                    divisions: 4,
+                    onChanged: (value) {
                       setState(() {
                         _sizeValue = value;
                       });
                       widget.onSizeChanged?.call(value);
                     },
                   ),
+                ),
               ),
             ],
           ),
