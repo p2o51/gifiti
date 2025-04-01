@@ -25,8 +25,8 @@ class _EditorScreenState extends State<EditorScreen> {
   EditorMode _selectedMode = EditorMode.emojis;
   Color _selectedColor = Colors.blue;
   String _selectedEmoji = '';
-  double _density = 0.0;
-  double _size = 0.0;
+  double _density = 2.0;
+  double _size = 1.0;
 
   // 添加一个 GlobalKey 用于 RepaintBoundary
   final GlobalKey _boundaryKey = GlobalKey();
@@ -485,7 +485,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   margin: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -497,7 +497,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           // All selectors shown at once instead of tabs
                           // Color selector
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: const EdgeInsets.all(16.0),
                             child: Text(
                               'Color',
                               style: TextStyle(
@@ -515,7 +515,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           
                           // Emoji selector
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: const EdgeInsets.all(16.0),
                             child: Text(
                               'Emojis',
                               style: TextStyle(
@@ -533,7 +533,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           
                           // Layout selector
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: const EdgeInsets.all(16.0),
                             child: Text(
                               'Layout',
                               style: TextStyle(
