@@ -11,6 +11,8 @@ import 'dart:ui' as ui;
 import 'dart:math';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class EditorScreen extends StatefulWidget {
   final XFile? selectedImage;
@@ -384,46 +386,68 @@ class _EditorScreenState extends State<EditorScreen> {
       final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
-      // 获取临时目录
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/temp_emoji_art_${DateTime.now().millisecondsSinceEpoch}.png');
-      await tempFile.writeAsBytes(bytes);
-
-      if (Platform.isIOS) {
-        final result = await ImageGallerySaver.saveFile(tempFile.path);
-        await tempFile.delete();
+      if (kIsWeb) {
+        // Web platform - trigger a download
+        final blob = html.Blob([bytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'gifiti_art_${DateTime.now().millisecondsSinceEpoch}.png')
+          ..click();
+        html.Url.revokeObjectUrl(url);
         
-        if (result['isSuccess']) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✨ Saved to Photos'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-          return tempFile.path;
-        } else {
-          throw Exception('Failed to save to gallery');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✨ Downloaded image'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
+        return null;
       } else {
-        final result = await ImageGallerySaver.saveFile(tempFile.path);
-        await tempFile.delete();
-        
-        if (result['isSuccess']) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✨ Saved to Gallery'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+        // Mobile platforms
+        // 获取临时目录
+        final tempDir = await getTemporaryDirectory();
+        final tempFile = File('${tempDir.path}/temp_emoji_art_${DateTime.now().millisecondsSinceEpoch}.png');
+        await tempFile.writeAsBytes(bytes);
+
+        if (Platform.isIOS) {
+          final result = await ImageGallerySaver.saveFile(tempFile.path);
+          await tempFile.delete();
+          
+          if (result['isSuccess']) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('✨ Saved to Photos'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+            return tempFile.path;
+          } else {
+            throw Exception('Failed to save to gallery');
           }
-          return result['filePath'];
         } else {
-          throw Exception('Failed to save to gallery');
+          final result = await ImageGallerySaver.saveFile(tempFile.path);
+          await tempFile.delete();
+          
+          if (result['isSuccess']) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('✨ Saved to Gallery'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+            return result['filePath'];
+          } else {
+            throw Exception('Failed to save to gallery');
+          }
         }
       }
     } catch (e) {
@@ -470,10 +494,7 @@ class _EditorScreenState extends State<EditorScreen> {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: Image.file(
-                                File(widget.selectedImage!.path),
-                                fit: BoxFit.cover,
-                              ),
+                              child: _buildImageWidget(),
                             ),
                           ),
                         ),
@@ -509,6 +530,27 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
       ],
     );
+  }
+  
+  // Helper method to handle image display for both web and mobile
+  Widget _buildImageWidget() {
+    if (widget.selectedImage == null) {
+      return const SizedBox.shrink();
+    }
+    
+    if (kIsWeb) {
+      // For web, XFile.path is actually a object URL
+      return Image.network(
+        widget.selectedImage!.path,
+        fit: BoxFit.cover,
+      );
+    } else {
+      // For mobile, use File
+      return Image.file(
+        File(widget.selectedImage!.path),
+        fit: BoxFit.cover,
+      );
+    }
   }
   
   // Action buttons widget that's used in both layouts

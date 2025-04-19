@@ -7,6 +7,7 @@ import 'editor_screen.dart';
 import 'package:flutter_sharing_intent/flutter_sharing_intent.dart';
 import 'package:flutter_sharing_intent/model/sharing_file.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -66,7 +67,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      // Enable higher quality images for web
+      maxWidth: kIsWeb ? 1920 : null,
+      maxHeight: kIsWeb ? 1080 : null,
+      imageQuality: kIsWeb ? 95 : 90,
+    );
+    
     if (!mounted) return;
     
     setState(() {

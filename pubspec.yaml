@@ -45,6 +45,7 @@ dependencies:
   flutter_sharing_intent: ^1.1.1
   flutter_secure_storage: ^9.0.0
   http: ^1.2.0
+  universal_html: ^2.2.4
 
 
 dev_dependencies:

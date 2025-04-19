@@ -32,7 +32,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     setState(() {
       _hasApiKey = apiKey != null && apiKey.isNotEmpty;
       _isLoading = false;
-      
+
       // If there's an API key, show a placeholder instead of the actual key
       _apiKeyController.text = _hasApiKey ? '••••••••••••••••••••••' : '';
       print('SettingsDialog: API Key 加载${_hasApiKey ? "成功" : "失败或不存在"}');
@@ -48,7 +48,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
     print('SettingsDialog: 开始保存 API Key');
     setState(() => _isLoading = true);
-    
+
     try {
       await GeminiService.saveApiKey(apiKey);
       if (mounted) {
@@ -59,10 +59,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        setState(() {
-          _hasApiKey = true;
-          _isLoading = false;
-        });
+        // Close the dialog after successful save
+        Navigator.of(context).pop();
       }
     } catch (e) {
       print('SettingsDialog: API Key 保存失败: $e');
@@ -81,7 +79,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   Future<void> _deleteApiKey() async {
     print('SettingsDialog: 开始删除 API Key');
     setState(() => _isLoading = true);
-    
+
     try {
       await GeminiService.deleteApiKey();
       _apiKeyController.clear();
@@ -93,10 +91,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        setState(() {
-          _hasApiKey = false;
-          _isLoading = false;
-        });
+        // Close the dialog after successful deletion
+        Navigator.of(context).pop();
       }
     } catch (e) {
       print('SettingsDialog: API Key 删除失败: $e');
@@ -182,4 +178,4 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ],
     );
   }
-} 
+}

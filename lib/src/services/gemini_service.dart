@@ -3,11 +3,21 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'network_connector.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class GeminiService {
   static const String _apiKeyStorageKey = 'gemini_api_key';
   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    // Use a more web-compatible configuration
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+    webOptions: WebOptions(
+      dbName: 'gifiti_secure',
+      publicKey: 'gifiti_web_key',
+    ),
+  );
   static const String _modelName = 'gemini-2.0-flash';
 
   // Save API key securely
@@ -151,7 +161,7 @@ class GeminiService {
   }
   
   // Parse color code to ensure it's a valid hex color
-  static Color _parseColorCode(String colorCode) {
+    static Color _parseColorCode(String colorCode) {
     if (colorCode.startsWith('#') && (colorCode.length == 7 || colorCode.length == 9)) {
       try {
         return Color(int.parse('0xFF${colorCode.substring(1)}'));

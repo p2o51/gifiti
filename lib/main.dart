@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sharing_intent/flutter_sharing_intent.dart';
 import 'package:flutter_sharing_intent/model/sharing_file.dart';
 import 'src/screens/editor_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,8 +41,10 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // 检查初始分享意图
-    _checkInitialSharedImage();
+    // 检查初始分享意图 - Only for mobile
+    if (!kIsWeb) {
+      _checkInitialSharedImage();
+    }
   }
 
   Future<void> _checkInitialSharedImage() async {
